@@ -66,6 +66,16 @@
       "source": "/index.html",
       "destination": "/",
       "permanent": true
+    },
+    {
+      "source": "/studio",
+      "destination": "https://cbmogun.sanity.studio",
+      "permanent": false
+    },
+    {
+      "source": "/studio/:path*",
+      "destination": "https://cbmogun.sanity.studio",
+      "permanent": false
     }
   ]
 }

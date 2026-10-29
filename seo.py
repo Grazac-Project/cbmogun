@@ -21,6 +21,8 @@ META={
 'privacy.html':('Privacy Policy | City Boy Movement Ogun State','Read how the City Boy Movement Ogun State website handles banner images, Google Forms registration, external services and technical connection information.'),
 '404.html':('Page Not Found | CBM Ogun','This page could not be found. Visit City Boy Movement Ogun State for chapter information, leadership, photos, programmes and membership links.')}
 
+# Sanity Studio is hosted by Sanity (studioHost in studio/sanity.cli.ts); /studio forwards there.
+STUDIO_URL='https://cbmogun.sanity.studio'
 NOINDEX=['404.html','privacy.html','post.html']
 ARTICLES={}  # updates/*.html -> BlogPosting fields, filled by build.py
 
@@ -98,8 +100,8 @@ def finish(base,root):
    if h['key']=='Content-Security-Policy':h['value']=csp
  config['headers']=[row for row in config['headers'] if row['source'] not in ['/assets/(.*)','/404.html','/privacy.html','/post.html']]
  config['headers'] += [{'source':'/assets/(.*)','headers':[{'key':'Cache-Control','value':'public, max-age=604800, stale-while-revalidate=86400'}]},{'source':'/404.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/privacy.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/post.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]}]
- config['redirects']=[{'source':'/index.html','destination':'/','permanent':True}]
+ config['redirects']=[{'source':'/index.html','destination':'/','permanent':True},{'source':'/studio','destination':STUDIO_URL,'permanent':False},{'source':'/studio/:path*','destination':STUDIO_URL,'permanent':False}]
  (root/'vercel.json').write_text(json.dumps(config,indent=2)+'\n')
  headers='/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: '+csp+'\n/assets/*\n  Cache-Control: public, max-age=604800, stale-while-revalidate=86400\n/404.html\n  X-Robots-Tag: noindex, follow\n/privacy.html\n  X-Robots-Tag: noindex, follow\n/post.html\n  X-Robots-Tag: noindex, follow\n'
- (root/'dist/_headers').write_text(headers);(root/'dist/_redirects').write_text('/index.html / 301\n')
+ (root/'dist/_headers').write_text(headers);(root/'dist/_redirects').write_text('/index.html / 301\n/studio '+STUDIO_URL+' 302\n/studio/* '+STUDIO_URL+' 302\n')
  return len(pages)
