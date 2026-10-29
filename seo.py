@@ -21,8 +21,8 @@ META={
 'privacy.html':('Privacy Policy | City Boy Movement Ogun State','Read how the City Boy Movement Ogun State website handles banner images, Google Forms registration, external services and technical connection information.'),
 '404.html':('Page Not Found | CBM Ogun','This page could not be found. Visit City Boy Movement Ogun State for chapter information, leadership, photos, programmes and membership links.')}
 
-# Sanity Studio is hosted by Sanity (studioHost in studio/sanity.cli.ts); /studio forwards there.
-STUDIO_URL='https://cbmogun.sanity.studio'
+# Sanity Studio is built into dist/studio (see vercel.json buildCommand) and gets its own headers.
+STUDIO_HEADERS=[{'key':'X-Content-Type-Options','value':'nosniff'},{'key':'Referrer-Policy','value':'strict-origin-when-cross-origin'},{'key':'X-Robots-Tag','value':'noindex, nofollow'},{'key':'Content-Security-Policy','value':"frame-ancestors 'self'; object-src 'none'; base-uri 'self'"}]
 NOINDEX=['404.html','privacy.html','post.html']
 ARTICLES={}  # updates/*.html -> BlogPosting fields, filled by build.py
 
@@ -84,7 +84,9 @@ def finish(base,root):
  ns='http://www.sitemaps.org/schemas/sitemap/0.9';ins='http://www.google.com/schemas/sitemap-image/1.1';register_namespace('',ns);register_namespace('image',ins)
  tree=Element('{'+ns+'}urlset');pages=[];hashes=set()
  for p in sorted((root/'dist').rglob('*.html')):
-  file=str(p.relative_to(root/'dist'));text=p.read_text()
+  file=str(p.relative_to(root/'dist'))
+  if file.startswith('studio/'):continue
+  text=p.read_text()
   for script in re.findall(r'<script type="application/ld\+json">(.*?)</script>',text):hashes.add("'sha256-"+base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()+"'")
   if file in NOINDEX:continue
   loc=base+('/' if file=='index.html' else '/'+file);node=SubElement(tree,'{'+ns+'}url');SubElement(node,'{'+ns+'}loc').text=loc;pages.append(loc)
@@ -96,12 +98,16 @@ def finish(base,root):
  # Permit the exact generated JSON-LD blocks without allowing arbitrary inline JavaScript.
  config=json.loads((root/'vercel.json').read_text());csp="default-src 'self'; script-src 'self' "+' '.join(sorted(hashes))+"; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://cdn.sanity.io; connect-src 'self'"+(f' https://{sanity.PROJECT}.apicdn.sanity.io' if sanity.configured() else '')+"; frame-src https://docs.google.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'"
  for row in config['headers']:
+  # The site-wide rules skip /studio, which has its own looser policy so Sanity Studio can run.
+  if row['source'] in ['/(.*)','/((?!studio(?:/|$)).*)']:row['source']='/((?!studio(?:/|$)).*)'
   for h in row['headers']:
    if h['key']=='Content-Security-Policy':h['value']=csp
- config['headers']=[row for row in config['headers'] if row['source'] not in ['/assets/(.*)','/404.html','/privacy.html','/post.html']]
- config['headers'] += [{'source':'/assets/(.*)','headers':[{'key':'Cache-Control','value':'public, max-age=604800, stale-while-revalidate=86400'}]},{'source':'/404.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/privacy.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/post.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]}]
- config['redirects']=[{'source':'/index.html','destination':'/','permanent':True},{'source':'/studio','destination':STUDIO_URL,'permanent':False},{'source':'/studio/:path*','destination':STUDIO_URL,'permanent':False}]
+ config['headers']=[row for row in config['headers'] if row['source'] not in ['/assets/(.*)','/404.html','/privacy.html','/post.html','/studio','/studio/(.*)']]
+ config['headers'] += [{'source':'/assets/(.*)','headers':[{'key':'Cache-Control','value':'public, max-age=604800, stale-while-revalidate=86400'}]},{'source':'/404.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/privacy.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/post.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/studio','headers':STUDIO_HEADERS},{'source':'/studio/(.*)','headers':STUDIO_HEADERS}]
+ config['redirects']=[{'source':'/index.html','destination':'/','permanent':True}]
+ # Studio routes are handled in the browser; real files under /studio are served first.
+ config['rewrites']=[{'source':'/studio','destination':'/studio/index.html'},{'source':'/studio/:path*','destination':'/studio/index.html'}]
  (root/'vercel.json').write_text(json.dumps(config,indent=2)+'\n')
  headers='/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: '+csp+'\n/assets/*\n  Cache-Control: public, max-age=604800, stale-while-revalidate=86400\n/404.html\n  X-Robots-Tag: noindex, follow\n/privacy.html\n  X-Robots-Tag: noindex, follow\n/post.html\n  X-Robots-Tag: noindex, follow\n'
- (root/'dist/_headers').write_text(headers);(root/'dist/_redirects').write_text('/index.html / 301\n/studio '+STUDIO_URL+' 302\n/studio/* '+STUDIO_URL+' 302\n')
+ (root/'dist/_headers').write_text(headers);(root/'dist/_redirects').write_text('/index.html / 301\n/studio/* /studio/index.html 200\n')
  return len(pages)
