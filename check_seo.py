@@ -43,8 +43,8 @@ for file,p in pages.items():
    if tag=='a' and value.startswith('#') and len(value)>1:assert value[1:] in p.ids,(file,'broken fragment',value)
  sitemap=ET.parse(D/'sitemap.xml')
 ns={'s':'http://www.sitemaps.org/schemas/sitemap/0.9','image':'http://www.google.com/schemas/sitemap-image/1.1'}
-urls=sitemap.findall('s:url/s:loc',ns);assert len(urls)==len(pages)-2
-for node in urls:assert node.text in canonicals and not node.text.endswith(('404.html','privacy.html'))
+urls=sitemap.findall('s:url/s:loc',ns);assert len(urls)==len(pages)-3
+for node in urls:assert node.text in canonicals and not node.text.endswith(('404.html','privacy.html','post.html'))
 for n in sitemap.findall('.//image:loc',ns):assert (D/urlsplit(n.text).path.lstrip('/')).exists()
 assert 'Sitemap: '+base+'/sitemap.xml' in (D/'robots.txt').read_text()
 print(f'PASS: {len(pages)} pages; {len(urls)} indexable sitemap URLs; {schema_count} JSON-LD graphs; {image_count} images checked; metadata, local links and CSP hashes valid.')
