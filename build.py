@@ -121,4 +121,4 @@ shell('post.html','News & Events','Read the latest City Boy Movement Ogun State 
 shell('404.html','Page not found','The requested page could not be found. Return to the CBM Ogun State homepage.',intro('PAGE NOT FOUND','Let’s get you back on track.','The page you are looking for may have moved or the address may be incomplete.')+'<section class="section wrap">'+btn('Return to the homepage','/index.html','dark')+'</section>')
 # Canonicals, image sitemap, crawler rules and hosting SEO headers.
 finish(SITE_URL,ROOT)
-print('Generated',len(list(D.rglob('*.html'))),'pages')
+print('Generated',len([p for p in D.rglob('*.html') if p.relative_to(D).parts[0]!='studio']),'pages')

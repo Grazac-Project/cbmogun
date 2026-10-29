@@ -19,6 +19,7 @@ class Page(HTMLParser):
   if self.in_schema:self.schema[-1]+=d
 pages={}
 for p in D.rglob('*.html'):
+ if p.relative_to(D).parts[0]=='studio':continue  # Sanity Studio app, not a site page
  parser=Page();parser.feed(p.read_text());pages[str(p.relative_to(D))]=parser
 seen_titles=set();seen_desc=set();canonicals=set();image_count=0;schema_count=0
 headers=(D/'_headers').read_text()

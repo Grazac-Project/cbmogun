@@ -147,8 +147,9 @@ vite.config.ts.timestamp-*
 # Turbo Repo
 .turbo
 
-# Sanity Studio build output
+# Sanity Studio build output (built into dist/studio on deploy)
 studio/dist
+dist/studio
 studio/.sanity
 
 # Local Claude Code settings

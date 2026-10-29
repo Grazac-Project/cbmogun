@@ -1,10 +1,10 @@
 {
   "framework": null,
-  "buildCommand": "python3 build.py && python3 check_seo.py",
+  "buildCommand": "python3 build.py && python3 check_seo.py && cd studio && npm ci && npx sanity build ../dist/studio --yes",
   "outputDirectory": "dist",
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/((?!studio(?:/|$)).*)",
       "headers": [
         {
           "key": "X-Content-Type-Options",
@@ -59,6 +59,48 @@
           "value": "noindex, follow"
         }
       ]
+    },
+    {
+      "source": "/studio",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self'; object-src 'none'; base-uri 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/studio/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self'; object-src 'none'; base-uri 'self'"
+        }
+      ]
     }
   ],
   "redirects": [
@@ -66,16 +108,16 @@
       "source": "/index.html",
       "destination": "/",
       "permanent": true
-    },
+    }
+  ],
+  "rewrites": [
     {
       "source": "/studio",
-      "destination": "https://cbmogun.sanity.studio",
-      "permanent": false
+      "destination": "/studio/index.html"
     },
     {
       "source": "/studio/:path*",
-      "destination": "https://cbmogun.sanity.studio",
-      "permanent": false
+      "destination": "/studio/index.html"
     }
   ]
 }
