@@ -23,7 +23,7 @@ Optional Google/Bing HTML verification tokens can be passed as GOOGLE_SITE_VERIF
 
 ## Preview and edit
 
-`python3 build.py` regenerates HTML using Python 3 and the standard library. Serve `dist` from the domain root using your static hosting preview. The default SITE_URL targets the existing private ChatGPT Site; production exports explicitly use cbmogun.org.
+`python3 build.py` regenerates HTML using Python 3 and the standard library. Serve `dist` from the domain root using your static hosting preview. SITE_URL defaults to https://cbmogun.org; set it to build for another domain.
 
 - Content and page templates: build.py; About page: about_body.html; banner page: banner_body.html.
 - Executives: executives.json. Photos remain in dist/assets/executives.
@@ -31,8 +31,29 @@ Optional Google/Bing HTML verification tokens can be passed as GOOGLE_SITE_VERIF
 - Metadata/schema/sitemap: seo.py. Checks: check_seo.py.
 - Styles: dist/assets/style.css. Interactions: dist/assets/app.js.
 - The original logo is unchanged. A smaller lossless copy serves the header; the original is retained for banner artwork and authorised downloads.
+- News & Events: posts come from Sanity project zn3hw447 by default (see below); set SANITY_PROJECT_ID to use another project.
 - Banner generator: dist/assets/banner.js. Fixed wording “I am City Boy”; portrait or square PNG; names and photos stay in the browser.
 - Support group registration embeds the chapter Google Form on its own page.
 - All membership links go to https://cbmnigeria.org/register.
 
 The existing private Site identity is stored in .openai/hosting.json for updates to that Site. It is not required for ordinary static hosting and is excluded from the production ZIP.
+
+## News & Events (Sanity)
+
+The News & Events page has a Featured post, a "More to explore" grid (9 per page) and a category filter. Posts are fetched from Sanity when the site is built, so every page stays static HTML. The integration is in `sanity.py` and uses only the Python standard library.
+
+1. Create a Sanity project at sanity.io/manage with a public `production` dataset.
+2. Studio: the project ID (`zn3hw447`) is the default in `studio/sanity.config.js`. `cd studio`, `npm install`, then `npm run dev -- --port 3000` (http://localhost:3000) or `npm run deploy` (hosted at *.sanity.studio).
+3. In the Studio, create Categories, then posts. Tick "Featured post" on the one to show in the Featured slot; otherwise the newest post is featured.
+4. Build with the project settings:
+
+```sh
+SANITY_PROJECT_ID=zn3hw447 SANITY_DATASET=production python3 build.py
+python3 check_seo.py
+```
+
+`SANITY_TOKEN` is optional and only needed for a private dataset. Post pages are written to `dist/updates/<slug>.html`, and pages for unpublished posts are removed on each build.
+
+Pages also refresh in the browser (`dist/assets/news.js`): the listing, homepage cards and post pages fetch the latest published posts from Sanity, so new posts and edits appear without a rebuild. Posts published after the last build open at `/post.html?slug=<slug>` until the next build gives them their own page. If the fetch fails, visitors see the built version. The browser fetch only works from origins listed in sanity.io/manage → API → CORS origins (add https://cbmogun.org, https://www.cbmogun.org and http://localhost:8765, no credentials needed).
+
+Rebuilding is still worthwhile because search engines and link previews read the built HTML. On Vercel, set `SANITY_PROJECT_ID` and `SANITY_DATASET` as environment variables. `vercel.json` runs `python3 build.py` on each deploy. To publish automatically, create a Vercel Deploy Hook and add it as a Sanity webhook (sanity.io/manage → API → Webhooks) that fires on create, update and delete of `post` documents.
