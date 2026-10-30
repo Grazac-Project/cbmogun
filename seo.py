@@ -13,7 +13,7 @@ META={
 'programmes/learning.html':('Learning, Skills & Opportunity | CBM Ogun','Explore City Boy Movement Ogun State’s focus on learning, skills and opportunity, with information to support personal development and community learning.'),
 'programmes/civic.html':('Civic Engagement & Participation | CBM Ogun','Explore City Boy Movement Ogun State’s civic engagement focus: useful public information, respectful dialogue and participation in community life.'),
 'programmes/volunteering.html':('Volunteer Service & Community Participation | CBM Ogun','Learn about City Boy Movement Ogun State’s volunteer service priorities, defined roles, teamwork and accountable community participation.'),
-'updates.html':('News, Events & Chapter Information | CBM Ogun','Find City Boy Movement Ogun State chapter information, membership guides and the route to national announcements, events and participation opportunities.'),
+'news.html':('News, Events & Chapter Information | CBM Ogun','Find City Boy Movement Ogun State chapter information, membership guides and the route to national announcements, events and participation opportunities.'),
 'contact.html':('Contact & Membership Enquiries | CBM Ogun','Find enquiry routes for City Boy Movement Ogun State, connect with our social channels and access national membership registration and account support.'),
 'resources.html':('Membership FAQs & Chapter Resources | CBM Ogun','Get answers about City Boy Movement membership, programmes and chapter enquiries. Access the original Ogun State chapter logo for authorised use.'),
 'banner.html':('Create Your City Boy Movement Ogun Banner | CBM Ogun','Create your personalised “I am City Boy” Ogun State banner. Add a photo and name, adjust the crop, and download a portrait or square PNG to share.'),
@@ -23,20 +23,29 @@ META={
 
 # Sanity Studio is built into dist/studio (see vercel.json buildCommand) and gets its own headers.
 STUDIO_HEADERS=[{'key':'X-Content-Type-Options','value':'nosniff'},{'key':'Referrer-Policy','value':'strict-origin-when-cross-origin'},{'key':'X-Robots-Tag','value':'noindex, nofollow'},{'key':'Content-Security-Policy','value':"frame-ancestors 'self'; object-src 'none'; base-uri 'self'"}]
+# News & Events moved from /updates to /news; keep old shared links working.
+OLD_NEWS_REDIRECTS=[{'source':'/updates.html','destination':'/news','permanent':True},{'source':'/updates','destination':'/news','permanent':True},{'source':'/updates/(.*)\\.html','destination':'/news/$1','permanent':True},{'source':'/updates/:slug','destination':'/news/:slug','permanent':True}]
 NOINDEX=['404.html','privacy.html','post.html']
-ARTICLES={}  # updates/*.html -> BlogPosting fields, filled by build.py
+ARTICLES={}  # news/*.html -> BlogPosting fields, filled by build.py
+
+def page_path(file):
+ # Pages are served without .html (vercel.json cleanUrls): about.html -> /about, index.html -> /.
+ return '/' if file=='index.html' else '/'+file.removesuffix('.html')
+def clean_links(text):
+ text=re.sub(r'href="/index\.html(?=[#?"])','href="/',text)
+ return re.sub(r'href="(/[^"#?]+?)\.html(?=[#?"])',r'href="\1',text)
 
 def clean(text):return html.unescape(re.sub('<[^>]+>',' ',text)).strip()
 def jld(value):return json.dumps(value,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c')
 def enhance(file,body,text,base,root):
  title,desc=META.get(file,(BRAND,'Explore City Boy Movement Ogun State chapter information.'))
- canonical=base+('/' if file=='index.html' else '/'+file)
+ canonical=base+page_path(file)
  title_e=html.escape(title,quote=True);desc_e=html.escape(desc,quote=True)
  text=re.sub(r'<title>.*?</title>',f'<title>{title_e}</title>',text)
  text=re.sub(r'<meta name="description"[^>]*>',f'<meta name="description" content="{desc_e}">',text)
  for prop,value in [('og:title',title_e),('og:description',desc_e)]:text=re.sub(r'<meta property="'+prop+r'"[^>]*>',f'<meta property="{prop}" content="{value}">',text)
  text=text.replace('/assets/social-cover.png','/assets/social-cover.jpg')
- text=text.replace('href="/index.html"','href="/"')
+ text=clean_links(text)
  # Reserve image space and serve appropriately sized gallery files.
  dims=json.loads((root/'image_dimensions.json').read_text())
  def image_tag(m):
@@ -61,12 +70,12 @@ def enhance(file,body,text,base,root):
  if file=='index.html':extra+='<link rel="preload" href="/assets/president-tinubu.webp" as="image" fetchpriority="high">'
  org_id=base+'/#organization';site_id=base+'/#website'
  graph=[{'@type':'Organization','@id':org_id,'name':BRAND,'alternateName':['CBM Ogun','City Boy Movement Ogun'],'url':base+'/','logo':{'@type':'ImageObject','url':base+'/assets/cbm-ogun-logo.png','width':1881,'height':858},'description':'The Ogun State chapter of City Boy Movement.','areaServed':{'@type':'AdministrativeArea','name':'Ogun State, Nigeria'},'parentOrganization':{'@type':'Organization','name':'City Boy Movement','url':'https://cbmnigeria.org/'},'sameAs':['https://x.com/cityboymovt_og','https://www.instagram.com/ogcityboymovt/']},{'@type':'WebSite','@id':site_id,'url':base+'/','name':BRAND,'alternateName':'CBM Ogun','publisher':{'@id':org_id},'inLanguage':'en-NG'}]
- page_type='ImageGallery' if file=='gallery.html' else 'AboutPage' if file=='about.html' else 'ContactPage' if file=='contact.html' else 'CollectionPage' if file in ['programmes.html','updates.html','leadership.html'] else 'WebPage'
+ page_type='ImageGallery' if file=='gallery.html' else 'AboutPage' if file=='about.html' else 'ContactPage' if file=='contact.html' else 'CollectionPage' if file in ['programmes.html','news.html','leadership.html'] else 'WebPage'
  page={'@type':page_type,'@id':canonical+'#webpage','url':canonical,'name':title,'description':desc,'isPartOf':{'@id':site_id},'about':{'@id':org_id},'inLanguage':'en-NG'}
  if file not in ['index.html','404.html']:
   crumbs=[{'@type':'ListItem','position':1,'name':'Home','item':base+'/'}]
   if '/' in file:
-   parent=file.split('/')[0]+'.html';crumbs.append({'@type':'ListItem','position':2,'name':'Programmes' if file.startswith('programmes/') else 'News & Events','item':base+'/'+parent})
+   parent=file.split('/')[0]+'.html';crumbs.append({'@type':'ListItem','position':2,'name':'Programmes' if file.startswith('programmes/') else 'News & Events','item':base+page_path(parent)})
   label={'gallery.html':'Gallery','leadership.html':'Leadership','banner.html':'Create your banner','support-group-registration.html':'Support group registration'}.get(file,title.split(' | ')[0])
   crumbs.append({'@type':'ListItem','position':len(crumbs)+1,'name':label,'item':canonical});graph.append({'@type':'BreadcrumbList','@id':canonical+'#breadcrumb','itemListElement':crumbs});page['breadcrumb']={'@id':canonical+'#breadcrumb'}
  if file=='gallery.html':
@@ -89,7 +98,7 @@ def finish(base,root):
   text=p.read_text()
   for script in re.findall(r'<script type="application/ld\+json">(.*?)</script>',text):hashes.add("'sha256-"+base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()+"'")
   if file in NOINDEX:continue
-  loc=base+('/' if file=='index.html' else '/'+file);node=SubElement(tree,'{'+ns+'}url');SubElement(node,'{'+ns+'}loc').text=loc;pages.append(loc)
+  loc=base+page_path(file);node=SubElement(tree,'{'+ns+'}url');SubElement(node,'{'+ns+'}loc').text=loc;pages.append(loc)
   main=text.split('<main id="main">',1)[1].split('</main>',1)[0]
   for src in dict.fromkeys(re.findall(r'<img[^>]+src="(/assets/[^"]+)"',main)):
    im=SubElement(node,'{'+ins+'}image');SubElement(im,'{'+ins+'}loc').text=base+src
@@ -102,12 +111,13 @@ def finish(base,root):
   if row['source'] in ['/(.*)','/((?!studio(?:/|$)).*)']:row['source']='/((?!studio(?:/|$)).*)'
   for h in row['headers']:
    if h['key']=='Content-Security-Policy':h['value']=csp
- config['headers']=[row for row in config['headers'] if row['source'] not in ['/assets/(.*)','/404.html','/privacy.html','/post.html','/studio','/studio/(.*)']]
- config['headers'] += [{'source':'/assets/(.*)','headers':[{'key':'Cache-Control','value':'public, max-age=604800, stale-while-revalidate=86400'}]},{'source':'/404.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/privacy.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/post.html','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/studio','headers':STUDIO_HEADERS},{'source':'/studio/(.*)','headers':STUDIO_HEADERS}]
- config['redirects']=[{'source':'/index.html','destination':'/','permanent':True}]
+ config['headers']=[row for row in config['headers'] if row['source'] not in ['/assets/(.*)','/404.html','/privacy.html','/post.html','/404','/privacy','/post','/studio','/studio/(.*)']]
+ config['cleanUrls']=True
+ config['headers'] += [{'source':'/assets/(.*)','headers':[{'key':'Cache-Control','value':'public, max-age=604800, stale-while-revalidate=86400'}]},{'source':'/404','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/privacy','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/post','headers':[{'key':'X-Robots-Tag','value':'noindex, follow'}]},{'source':'/studio','headers':STUDIO_HEADERS},{'source':'/studio/(.*)','headers':STUDIO_HEADERS}]
+ config['redirects']=[{'source':'/index.html','destination':'/','permanent':True}]+OLD_NEWS_REDIRECTS
  # Studio routes are handled in the browser; real files under /studio are served first.
  config['rewrites']=[{'source':'/studio','destination':'/studio/index.html'},{'source':'/studio/:path*','destination':'/studio/index.html'}]
  (root/'vercel.json').write_text(json.dumps(config,indent=2)+'\n')
- headers='/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: '+csp+'\n/assets/*\n  Cache-Control: public, max-age=604800, stale-while-revalidate=86400\n/404.html\n  X-Robots-Tag: noindex, follow\n/privacy.html\n  X-Robots-Tag: noindex, follow\n/post.html\n  X-Robots-Tag: noindex, follow\n'
- (root/'dist/_headers').write_text(headers);(root/'dist/_redirects').write_text('/index.html / 301\n/studio/* /studio/index.html 200\n')
+ headers='/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: '+csp+'\n/assets/*\n  Cache-Control: public, max-age=604800, stale-while-revalidate=86400\n/404\n  X-Robots-Tag: noindex, follow\n/privacy\n  X-Robots-Tag: noindex, follow\n/post\n  X-Robots-Tag: noindex, follow\n'
+ (root/'dist/_headers').write_text(headers);(root/'dist/_redirects').write_text('/index.html / 301\n/updates.html /news 301\n/updates /news 301\n/updates/:slug.html /news/:slug 301\n/updates/:slug /news/:slug 301\n/studio/* /studio/index.html 200\n')
  return len(pages)

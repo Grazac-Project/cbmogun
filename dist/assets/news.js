@@ -21,7 +21,7 @@ async function query(groq,params={}){
  return (await response.json()).result;
 }
 function niceDate(value){if(!value)return '';const d=new Date(value);return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`}
-function postUrl(p){return built.has(p.slug)?`/updates/${p.slug}.html`:`/post.html?slug=${encodeURIComponent(p.slug)}`}
+function postUrl(p){return built.has(p.slug)?`/news/${p.slug}`:`/post?slug=${encodeURIComponent(p.slug)}`}
 function dateTag(p){const d=niceDate(p.publishedAt);return d?`<time datetime="${esc(p.publishedAt.slice(0,10))}">${d}</time>`:''}
 function imgTag(img,width,lazy=true){
  if(!img?.url?.startsWith('https://cdn.sanity.io/'))return '';
@@ -99,16 +99,20 @@ async function refreshPost(article){
  const slug=article.dataset.slug||new URLSearchParams(location.search).get('slug')||'';
  const p=slug&&await query(`*[${PUBLISHED}&&slug.current==$slug][0]{${FIELDS},body[]{...,_type=="image"=>${IMAGE}}}`,{slug});
  const intro=$('.page-intro');
- if(!p){if(!article.dataset.slug){intro.querySelector('h1').textContent='Post not found';intro.querySelector('.lede').textContent='This post may have been moved or unpublished.';article.innerHTML='<a class="text-link" href="/updates.html">← Back to News & Events</a>'}return}
+ if(!p){if(!article.dataset.slug){intro.querySelector('h1').textContent='Post not found';intro.querySelector('.lede').textContent='This post may have been moved or unpublished.';article.innerHTML='<a class="text-link" href="/news">← Back to News & Events</a>'}return}
  const kicker=esc(p.category.toUpperCase());
  intro.querySelector('.breadcrumb').innerHTML=`<a href="/">Home</a><span>/</span>${kicker}`;intro.querySelector('.eyebrow').innerHTML=kicker;
  intro.querySelector('h1').textContent=p.title;intro.querySelector('.lede').textContent=p.excerpt||'';
  document.title=`${p.title} | CBM Ogun`;
  const label=[niceDate(p.publishedAt),'CBM OGUN'].filter(Boolean).join(' · '),cover=imgTag(p.cover,1400,false);
- article.innerHTML=`<span class="article-label">${esc(label)}</span>${cover?`<figure class="post-cover">${cover}</figure>`:''}${portableText(p.body)}<hr><a class="text-link" href="/updates.html">← Back to News & Events</a>`;
+ article.innerHTML=`<span class="article-label">${esc(label)}</span>${cover?`<figure class="post-cover">${cover}</figure>`:''}${portableText(p.body)}<hr><a class="text-link" href="/news">← Back to News & Events</a>`;
 }
 
 if(!project)return;
 const article=$('#post-body');
-(article?refreshPost(article):refreshListing()).catch(error=>console.warn('News & Events: showing the built version.',error));
+(article?refreshPost(article):refreshListing()).catch(error=>{
+ console.warn('News & Events: showing the built version.',error);
+ // /post has no built version to fall back on, so say what happened instead of "Loading post…".
+ if(article&&!article.dataset.slug){const intro=$('.page-intro');intro.querySelector('h1').textContent='This post could not be loaded';intro.querySelector('.lede').textContent='Please check your connection and try again.';article.innerHTML='<a class="text-link" href="/news">← Back to News & Events</a>'}
+});
 })();

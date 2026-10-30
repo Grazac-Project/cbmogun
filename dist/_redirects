@@ -1,2 +1,6 @@
 /index.html / 301
+/updates.html /news 301
+/updates /news 301
+/updates/:slug.html /news/:slug 301
+/updates/:slug /news/:slug 301
 /studio/* /studio/index.html 200
